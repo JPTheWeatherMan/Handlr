@@ -1,7 +1,6 @@
 # **Handlr**
 
-## At a Glance
----
+# At a Glance
 
 Handlr is the implementation of a networking protocol that functions as a chatroom service. The specification for this protocol was defined by Dr. Eugene Styer's CSC 360 course at Eastern Kentucky University during the Spring of 2023.
 
@@ -11,8 +10,7 @@ Handlr was architected and developed by:
 
 * Jarrett Hale
 
-## Table of Contents
----
+# Table of Contents
 
 * [Environment](#environment) - An overview of the expected runtime environment
 
@@ -25,16 +23,14 @@ Handlr was architected and developed by:
 * [Git](#git) - Some context about contributing through Github
 
 
-## Environment
----
+# Environment
 
 Handlr is expected to run in a Windows environment with Python >3.10 installed.
 
 * Windows 10 or 11
 * Python >3.10
 
-## Running Handlr
----
+# Running Handlr
 
 * Install Python >3.10: [Download](https://www.python.org/downloads/)
 
@@ -77,8 +73,7 @@ Handlr is expected to run in a Windows environment with Python >3.10 installed.
     ```powershell
     (.venv) C:\Handlr> python main.py XXX.XX.XXX.XX
     ```
-## Developing
----
+# Developing
 
 * Install Python >3.10
 
@@ -146,8 +141,7 @@ Handlr is expected to run in a Windows environment with Python >3.10 installed.
     deactivate
     ```
 
-## `venv`
----
+# `venv`
 
 - `venv` requires additional setup on Windows due to the default Powershell execution settings.
 
@@ -161,14 +155,12 @@ Handlr is expected to run in a Windows environment with Python >3.10 installed.
 
 - [Default Powershell script execution policies on Windows 10 & 11](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.3)
 
-## Protocol Specification
----
+# Protocol Specification
 
 Fill me out!
 
 * Port: 4269
 
-## Git
----
+# Git
 
 Fill me out!
