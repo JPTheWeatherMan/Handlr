@@ -52,6 +52,12 @@ Handlr is expected to run in a Windows environment with Python >3.10 installed.
     python -m venv .venv
     ```
 
+* Activate the Virtual Environment
+
+    ```powershell 
+    .venv\Scripts\activate
+    ```
+
 * Install dependencies
 
     ```powershell
