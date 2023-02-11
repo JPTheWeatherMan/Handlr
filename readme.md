@@ -170,3 +170,7 @@ Fill me out!
 # Git
 
 Fill me out!
+
+# Google Docs
+
+One can find a Google Docs document which houses temporary information shared between the development team [here](https://docs.google.com/document/d/12gu_y7MgWCtysBLknFZcsOCuNomY4x2meFkxOZ3T6pQ/edit?usp=sharing)
