@@ -17,10 +17,10 @@ class HandlrClientUI:
         self.globalParent.resizable(tk.FALSE, tk.FALSE)
         self.globalParent.title(constants.WINDOW_TITLE_FOR_UI)
         self.globalParent.protocol("WM_DELETE_WINDOW", self.on_closing)
-
-        self.ipFrame = self.promptForIP(self.globalParent)
-        self.globalParent.bind('<<ShowRoomBrowser>>', self.showRoomBrowser)
+        self.globalParent.bind('<<ShowIPPrompt>>', lambda: self.showIpPrompt(self.globalParent))
+        self.globalParent.bind('<<ShowRoomBrowser>>', lambda: self.showRoomBrowser(self.globalParent))
         self.globalParent.mainloop()
+        self.globalParent.event_generate('<<ShowIPPrompt>>', when="now")
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -28,7 +28,11 @@ class HandlrClientUI:
             exit()
 
     def showRoomBrowser(self):
-        self.roomBrowserFrame = self.roomBrowser()
+        self.roomBrowserFrame = self.roomBrowser(self.globalParent)
+    
+    def showIpPrompt(self):
+        print("I'm running")
+        self.ipFrame = self.promptForIP(self.globalParent)
 
     class promptForIP:
         def __init__(self, master):
@@ -67,19 +71,17 @@ class HandlrClientUI:
                 serverIPInput.get(), usernameInput.get(), passwordInput.get()))
             loginSubmitButton.grid(row=4, column=0, columnspan=4, pady=5, sticky=tk.W+tk.E)
 
-            self.frame.pack(pady=(150,0))     
+            self.frame.pack(pady=(150,0))
             self.frame.wait_window()
             
         def handleSubmit(self, serverIp, username, password):
-            if (config.DEBUG_MODE):
-                print("ServerIP: {} \nUsername: {} \nPassword: {}".format(
-                    serverIp, username, password))
+            if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
             try:
                 socket.inet_aton(serverIp)
                 #TODO: Validate user, save username to state, save server ip to state
-                self.master.event_generate("<<ShowRoomBrowser>>", when="now")
                 self.frame.grab_release()
                 self.frame.pack_forget()
+                self.master.event_generate("<<ShowRoomBrowser>>", when="now")
                 self.frame.destroy()
             except socket.error:
                 messagebox.showinfo(
