@@ -14,15 +14,18 @@ class HandlrClientUI:
     def __init__(self):
         self.globalParent = tk.Tk()
         self.globalParent.geometry('800x600')
-        self.globalParent.maxsize(800, 600)
-        self.globalParent.minsize(800, 600)
+        self.globalParent.resizable(tk.FALSE, tk.FALSE)
         self.globalParent.title(constants.WINDOW_TITLE_FOR_UI)
-        self.promptForIP(self.globalParent)
-        self.roomBrowser(self.globalParent)
+        self.globalParent.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.ipFrame = self.promptForIP(self.globalParent)
+        self.roomBrowserFrame = self.roomBrowser(self.globalParent)
         self.globalParent.mainloop()
 
-    def on_closing(self, root):
+    def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.ipFrame.destroy()
+            self.roomBrowserFrame.destroy()
             self.globalParent.destroy()
 
 
@@ -33,21 +36,21 @@ class HandlrClientUI:
 
             # Server IP Label
             serverIPLabel = tk.Label(self.frame, text="Server IP: ", height="1")
-            serverIPLabel.grid(row=0, column=0, padx=10, pady=5, sticky="e")
+            serverIPLabel.grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
 
             # ServerIP Input
             serverIPInput = tk.Entry(
                 self.frame, width="25")
-            serverIPInput.grid(row=0, column=3, padx=10, pady=5, sticky="w")
+            serverIPInput.grid(row=0, column=3, padx=10, pady=5, sticky=tk.W)
 
             # Username Label
             usernameLabel = tk.Label(self.frame, text="Username: ", height="1")
-            usernameLabel.grid(row=1, column=0, padx=10, pady=5, sticky="e")
+            usernameLabel.grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
 
             # Username Input
             usernameInput = tk.Entry(
                 self.frame, width="25")
-            usernameInput.grid(row=1, column=3, padx=10, pady=5, sticky="w")
+            usernameInput.grid(row=1, column=3, padx=10, pady=5, sticky=tk.W)
 
             # Password Label
             passwordLabel = tk.Label(self.frame, text="Password: ", height="1")
@@ -63,7 +66,8 @@ class HandlrClientUI:
                 serverIPInput.get(), usernameInput.get(), passwordInput.get()))
             loginSubmitButton.grid(row=4, column=0, columnspan=4, pady=5, sticky=tk.W+tk.E)
 
-            self.frame.pack(pady=(150,0))
+            self.frame.pack(pady=(150,0))     
+            self.frame.wait_window()
             
         def handleSubmit(self, serverIp, username, password):
             try:
@@ -76,6 +80,7 @@ class HandlrClientUI:
                 print("ServerIP: {} \nUsername: {} \nPassword: {}".format(
                     serverIp, username, password))
             #TODO: Validate user, save username to state, save server ip to state
+            self.frame.grab_release()
             self.frame.pack_forget()
             
 
