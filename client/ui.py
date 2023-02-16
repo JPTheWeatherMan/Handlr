@@ -19,15 +19,16 @@ class HandlrClientUI:
         self.globalParent.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.ipFrame = self.promptForIP(self.globalParent)
-        self.roomBrowserFrame = self.roomBrowser(self.globalParent)
+        self.globalParent.bind('<<ShowRoomBrowser>>', self.showRoomBrowser)
         self.globalParent.mainloop()
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            self.ipFrame.destroy()
-            self.roomBrowserFrame.destroy()
             self.globalParent.destroy()
+            exit()
 
+    def showRoomBrowser(self):
+        self.roomBrowserFrame = self.roomBrowser()
 
     class promptForIP:
         def __init__(self, master):
@@ -70,21 +71,20 @@ class HandlrClientUI:
             self.frame.wait_window()
             
         def handleSubmit(self, serverIp, username, password):
+            if (config.DEBUG_MODE):
+                print("ServerIP: {} \nUsername: {} \nPassword: {}".format(
+                    serverIp, username, password))
             try:
                 socket.inet_aton(serverIp)
+                #TODO: Validate user, save username to state, save server ip to state
+                self.master.event_generate("<<ShowRoomBrowser>>", when="now")
+                self.frame.grab_release()
+                self.frame.pack_forget()
+                self.frame.destroy()
             except socket.error:
                 messagebox.showinfo(
                     "IP Entry", "Please enter a valid IP address")
             
-            if (config.DEBUG_MODE):
-                print("ServerIP: {} \nUsername: {} \nPassword: {}".format(
-                    serverIp, username, password))
-            #TODO: Validate user, save username to state, save server ip to state
-            self.frame.grab_release()
-            self.frame.pack_forget()
-            
-
-
     class roomBrowser:
         def __init__(self, master):
             self.master = master
