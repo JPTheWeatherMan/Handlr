@@ -6,7 +6,6 @@ from threading import *
 
 def main():
     ui = HandlrClientUI()
-    server = Thread(target=ServerLink, daemon=True).start()
     ui.mainloop()
 
 

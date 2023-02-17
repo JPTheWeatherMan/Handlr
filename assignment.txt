@@ -1,0 +1,77 @@
+ We will create a client/server chat program:
+Protocol (as of 2/9):
+Server will listen on port 4269 (TCP)
+Client->Server
+
+    Login request (id, password)
+        0x10 id_len(2 bytes, big-endian) id(ASCII only) pw_len(2 bytes) pw(ASCII only)
+        Can only be sent before a successful login
+    Join chat room
+        0x11 room_number(4 bytes)
+        Maximum capacity is 65535, but server may allow fewer
+        Must be logged in first
+    Send message to chat room
+        0x12 message_len(4 bytes, length in bytes), message(UTF-8)
+        Must be logged in and have joined a chat room first
+    Logout request
+        0x14
+        Must be logged in first
+        Server will disconnect after sending this message
+    Change nickname
+        0x16 nickname_len(1 byte) nickname
+        Nickname must be less than 25 characters
+        Nickname should be unique within a chat room
+    Request list of chat rooms
+        0x17
+        Must be logged in first
+    Request users in current chat room
+        0x18
+        Must be logged in and have joined a chat room first
+    Leave current chat room
+        0x1B
+        Must be logged in and have joined a chat room first
+
+Server->Client
+
+    I have joined the chat room
+        0x80 welcome_msg_len (2 bytes) welcome_msg (UTF-8)
+    ___ has joined the chat room
+        0x81 nickname_len(2 bytes) nickname
+    ___ has left the chat room
+        0x83 nickname_len(2 bytes) nickname
+    Chat room full – cannot join
+        0xC0
+    Illegal chat room number
+        0xC7
+    Illegal operation – not logged in
+        0xC1
+    Invalid username or password
+        0xC2
+    Illegal operation – haven’t joined a chat room
+        0xC3
+    Already logged in
+        0xC4
+    Valid login
+        0x82
+    Invalid nickname/Nickname too long/Unacceptable nickname (don’t try this again)
+        0xC5
+    Nickname taken (ok to try again later)
+        0xC6
+    List of public chat rooms
+        0x84 number_rooms(4 bytes) [per room: room_number(4 bytes) room_name_len(2 bytes) room_name]
+    users in chat room ___
+        0x85 number_users(2 bytes) [per user: nickname_len(1 byte) nickname]
+    Send chat room message to client
+        0x86 message_len(4 bytes, length in bytes), message(UTF-8) nickname_len(1 byte) nickname
+
+Other notes:
+
+    You are permitted to work in groups of two (or alone if you want)
+    Since everyone is (hopefully) working from the same protocol, any client should be able to work with any server. You may get together with other groups to test compatibility
+    To help, I will require three users to be created by everone (you may create additional users if you want)
+        user1, with password 'abcdef'
+        user2, with password '123456'
+        user3, with password 'chatroom'
+    And three chat rooms named 'csc460', 'csit' and 'general' (create at least two additional chat rooms)
+    You should submit a ZIP file of either (a) Nebeans Project, (b) Java file, (c) Python file, or (d) Visual Studio 2019 project.
+    Due date is Feb 28
