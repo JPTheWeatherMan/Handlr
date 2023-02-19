@@ -95,6 +95,7 @@ class promptForIP(tk.Frame):
             #self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             #sock = sock.connect((str(self.host), int(self.port)))
             #TODO: Validate user, save username to state, save server ip to state
+          
             self.serverIPInput.delete(0, tk.END)
             self.usernameInput.delete(0, tk.END)
             self.passwordInput.delete(0, tk.END)
