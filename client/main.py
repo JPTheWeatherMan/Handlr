@@ -1,5 +1,5 @@
 from ui import HandlrClientUI
-from serverLink import ServerLink
+#from serverLink import ServerLink
 from threading import *
 
 

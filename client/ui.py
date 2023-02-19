@@ -1,12 +1,12 @@
 import socket
+import threading
 from state import CLIENT_APPLICATION_STATE
 from tkinter import messagebox
 import tkinter as tk
 import constants
-import sys
-sys.path.append("..")
-from shared import util
-from shared import config
+#import sys
+# sys.path.append("..")
+# from shared import config
 
 
 class HandlrClientUI(tk.Tk):
@@ -18,14 +18,18 @@ class HandlrClientUI(tk.Tk):
         self.resizable(tk.FALSE, tk.FALSE)
         container.pack(side=tk.TOP, fill=tk.BOTH, expand = True, anchor=tk.CENTER)
 
+        self.serverListenerThread = None
+        self.serverSocket = None
+
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
 
-        for F in (promptForIP, roomBrowser, displayChatRoom):
+        for F in (promptForIP, promptForCredentials, roomBrowser, displayChatRoom):
             frame = F(container, self)
             self.frames[F] = frame
+            self.frames[F].parentClass = self
             frame.grid(row=0, column=0, sticky="nsew")
             frame.grid_columnconfigure(0, weight=1)
             frame.grid_rowconfigure(0, weight=1)
@@ -42,17 +46,16 @@ class HandlrClientUI(tk.Tk):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             exit()
 
-    def showRoomBrowser(self):
-        self.roomBrowserFrame = self.roomBrowser(self.globalParent)
-    
-    def showIpPrompt(self):
-        print("I'm running")
-        self.ipFrame = self.promptForIP(self.globalParent)
+    def listenForMessages(self):
+        while True:
+            serverMessage = self.serverSocket.recv(1024).decode("utf-8")
+            print(serverMessage)
 
 class promptForIP(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
+        self.parent = parent
 
         inputContainer = tk.Frame(self)
         inputContainer.pack(pady="20")
@@ -63,12 +66,41 @@ class promptForIP(tk.Frame):
 
         # ServerIP Input
         self.serverIPInput = tk.Entry(inputContainer)
+        self.serverIPInput.insert(0, "127.0.0.1")
         self.serverIPInput.pack()
+
+        # Submit button
+        loginSubmitButton = tk.Button(self, text="Login", command=lambda: self.handleSubmit(
+            self.serverIPInput.get()))
+        loginSubmitButton.pack()
+        
+    def handleSubmit(self, serverIp):
+        # if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
+        print("ServerIP: {}".format(serverIp))
+        try:
+            socket.inet_aton(serverIp)
+            #TODO: move socket connection to use threaded connection and work off of pipeline
+            self.parentClass.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.parentClass.serverSocket.connect((str(serverIp), int(4269)))
+
+            self.parentClass.serverListenerThread = threading.Thread(target=self.parentClass.listenForMessages, daemon=True)
+            self.parentClass.serverListenerThread.start()
+
+            self.serverIPInput.delete(0, tk.END)
+            self.controller.show_frame(promptForCredentials)
+        except socket.error:
+            messagebox.showinfo("IP Entry", "Please enter a valid IP address")
+            self.serverIPInput.delete(0, tk.END)
+
+class promptForCredentials(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        inputContainer = tk.Frame(self)
+        inputContainer.pack(pady="20")
 
         # Username Label
         usernameLabel = tk.Label(inputContainer, text="Username: ", height="1")
         usernameLabel.pack()
-
         # Username Input
         self.usernameInput = tk.Entry(inputContainer)
         self.usernameInput.pack()
@@ -76,26 +108,19 @@ class promptForIP(tk.Frame):
         # Password Label
         passwordLabel = tk.Label(inputContainer, text="Password: ", height="1")
         passwordLabel.pack()
-
         # Password Input
         self.passwordInput = tk.Entry(inputContainer, show="*")
         self.passwordInput.pack()
   
         # Submit button
         loginSubmitButton = tk.Button(self, text="Login", command=lambda: self.handleSubmit(
-            self.serverIPInput.get(), self.usernameInput.get(), self.passwordInput.get()))
+            self.usernameInput.get(), self.passwordInput.get()))
         loginSubmitButton.pack()
-        
-    def handleSubmit(self, serverIp, username, password):
-        if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
+
+    def handleSubmit(self, username, password):
+        # if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
+        print("Username: {} \nPassword: {}".format(username, password))
         try:
-            socket.inet_aton(serverIp)
-            #TODO: move socket connection to use threaded connection and work off of pipeline
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((str(serverIp), int(config.SERVICE_PORT)))
-            #TODO: Validate user, save username to state, save server ip to state
-          
-            self.serverIPInput.delete(0, tk.END)
             self.usernameInput.delete(0, tk.END)
             self.passwordInput.delete(0, tk.END)
             self.controller.show_frame(roomBrowser)
