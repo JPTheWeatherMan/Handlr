@@ -81,7 +81,6 @@ class promptForIP(tk.Frame):
         self.passwordInput = tk.Entry(inputContainer, show="*")
         self.passwordInput.pack()
   
-
         # Submit button
         loginSubmitButton = tk.Button(self, text="Login", command=lambda: self.handleSubmit(
             self.serverIPInput.get(), self.usernameInput.get(), self.passwordInput.get()))
@@ -92,8 +91,8 @@ class promptForIP(tk.Frame):
         try:
             socket.inet_aton(serverIp)
             #TODO: move socket connection to use threaded connection and work off of pipeline
-            #self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #sock = sock.connect((str(self.host), int(self.port)))
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((str(serverIp), int(config.SERVICE_PORT)))
             #TODO: Validate user, save username to state, save server ip to state
             self.serverIPInput.delete(0, tk.END)
             self.usernameInput.delete(0, tk.END)
