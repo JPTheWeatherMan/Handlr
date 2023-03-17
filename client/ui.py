@@ -36,6 +36,13 @@ class HandlrClientUI(tk.Tk):
 
         self.mainloop()
 
+    def getStringFromSocketUsingLength(self, length):
+        string = ""
+        for i in range(length):
+            newChar = self.serverSocket.recv(1)
+            string += struct.unpack(">s", newChar)[0].decode("utf-8")
+        return string
+
     def show_frame(self, cont):
         frame = self.frames[cont]
         frame.tkraise()
@@ -49,15 +56,18 @@ class HandlrClientUI(tk.Tk):
             serverMessage = self.serverSocket.recv(4).decode("utf-8")
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["VALID_LOGIN"]):
                 self.show_frame(roomBrowser)
-                pass
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["INVALID_USERNAME_OR_PASSWORD"]):
                 messagebox.showinfo("Invalid Login Warning", "You have entered wrong credentials")
                 self.show_frame(promptForCredentials)
-                pass
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["ALREADY_LOGGED_IN"]):
                 messagebox.showinfo("Invalid Login Warning", "Your account is currently in use")
                 self.show_frame(promptForCredentials)
-                pass    
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["I_JOINED_ROOM"]):
+                welcomeMessageBytes = self.serverSocket.recv(2)
+                welcomeMessageLength = int(struct.unpack(">H", welcomeMessageBytes)[0])
+                welcomeMessage = self.getStringFromSocketUsingLength(welcomeMessageLength)
+                print(welcomeMessage)
+                self.show_frame(displayChatRoom)
             
 
 class promptForIP(tk.Frame):
@@ -128,55 +138,52 @@ class promptForCredentials(tk.Frame):
         loginSubmitButton.pack()
     #Function to handle log in from client threads
     def handleSubmit(self, username, password):
-        # if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
-        try:
-            encodedUsername = str(username).encode("utf-8")
-            usernameLength = len(encodedUsername)
-            encodedPassword = str(password).encode("utf-8")
-            passwordLength = len(encodedPassword)
-            print("Username Length:{}\nPassword Length:{}".format(usernameLength, passwordLength))
-            print("Username: {} \nPassword: {}".format(username, password))
-            print("encoded username:{}\nEncoded password:{}".format(encodedUsername, encodedPassword))
+        encodedUsername = str(username).encode("utf-8")
+        usernameLength = len(encodedUsername)
+        encodedPassword = str(password).encode("utf-8")
+        passwordLength = len(encodedPassword)
+        print("Username Length:{}\nPassword Length:{}".format(usernameLength, passwordLength))
+        print("Username: {} \nPassword: {}".format(username, password))
+        print("encoded username:{}\nEncoded password:{}".format(encodedUsername, encodedPassword))
 
-            #Send Login flag to server
-            self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["LOGIN"]).encode("utf-8"))
+        #Send Login flag to server
+        self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["LOGIN"]).encode("utf-8"))
 
-            #Pack the username bytes into big endian format
-            packedULength = struct.pack(">H", usernameLength)
-            packedPLength = struct.pack(">H", passwordLength)
-            packedUsr = struct.pack(">{}s".format(usernameLength), encodedUsername)
-            packedPass = struct.pack(">{}s".format(passwordLength), encodedPassword)
-            
-            #Send length of parameters and parameters
-            self.parentClass.serverSocket.sendall(packedULength)
-            self.parentClass.serverSocket.sendall(packedUsr)
-            self.parentClass.serverSocket.sendall(packedPLength)
-            self.parentClass.serverSocket.sendall(packedPass)
-            
-            #Clear UI input  
-            self.usernameInput.delete(0, tk.END)
-            self.passwordInput.delete(0, tk.END)
-        except socket.error:
-            self.usernameInput.delete(0, tk.END)
-            self.passwordInput.delete(0, tk.END)
+        #Pack the username bytes into big endian format
+        packedULength = struct.pack(">H", usernameLength)
+        packedPLength = struct.pack(">H", passwordLength)
+        packedUsr = struct.pack(">{}s".format(usernameLength), encodedUsername)
+        packedPass = struct.pack(">{}s".format(passwordLength), encodedPassword)
+        
+        #Send length of parameters and parameters
+        self.parentClass.serverSocket.sendall(packedULength)
+        self.parentClass.serverSocket.sendall(packedUsr)
+        self.parentClass.serverSocket.sendall(packedPLength)
+        self.parentClass.serverSocket.sendall(packedPass)
+        
+        #Clear UI input  
+        self.usernameInput.delete(0, tk.END)
+        self.passwordInput.delete(0, tk.END)
         
 class roomBrowser(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.parent = parent
         self.controller = controller
 
-        roomBrowserListBox = tk.Listbox(self, selectmode="SINGLE", height="35", width="100")
-        roomBrowserListBox.grid()
-        roomBrowserListBox.grid_columnconfigure(0, weight=1)
-        roomBrowserListBox.grid_rowconfigure(0, weight=1)
-        # roomBrowserListBox.insert({})
+        self.roomBrowserListBox = tk.Listbox(self, selectmode="SINGLE", height="35", width="100")
+        self.roomBrowserListBox.grid()
+        self.roomBrowserListBox.grid_columnconfigure(0, weight=1)
+        self.roomBrowserListBox.grid_rowconfigure(0, weight=1)
+        for roomName in constants.chat_rooms:
+            self.roomBrowserListBox.insert(0, roomName)
 
         buttonContainer = tk.Frame(self)
         buttonContainer.grid()
         buttonContainer.grid_columnconfigure(0, weight=1)
         buttonContainer.grid_rowconfigure(0, weight=1)
 
-        roomBrowserConnectButton = tk.Button(buttonContainer, text="Join Room", command=lambda: self.handleAttemptConnection("TEMP VALUE"))
+        roomBrowserConnectButton = tk.Button(buttonContainer, text="Join Room", command=lambda: self.handleAttemptConnection(self.roomBrowserListBox.get(self.roomBrowserListBox.curselection())))
         roomBrowserConnectButton.grid()
         roomBrowserConnectButton.grid_columnconfigure(0, weight=1)
         roomBrowserConnectButton.grid_rowconfigure(0, weight=1)
@@ -187,16 +194,22 @@ class roomBrowser(tk.Frame):
         roomBrowserLogoutButton.grid_rowconfigure(0, weight=1)
 
 
-    def handleAttemptConnection(self, roomID):
+    def handleAttemptConnection(self, selection):
         # TODO: Implement
-        CLIENT_APPLICATION_STATE["CURRENT_ROOM"] = roomID
-        self.controller.show_frame(displayChatRoom)
+        print(selection)
+        CLIENT_APPLICATION_STATE["CURRENT_ROOM"] = selection
+        room_number = constants.chat_rooms_to_room_number.get(selection)
+        self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["JOIN_CHAT_ROOM"]).encode("utf-8"))
+        packedRoomNumber = struct.pack(">I", room_number)
+        self.parentClass.serverSocket.sendall(packedRoomNumber)
 
     def handleLogout(self):
         CLIENT_APPLICATION_STATE["CONNECTED_TO_SERVER"] = False
         CLIENT_APPLICATION_STATE["SERVER_IP"] = None
         CLIENT_APPLICATION_STATE["USERNAME"] = None
         CLIENT_APPLICATION_STATE["ROOM_LIST"] = None
+        print("Sending logout to server")
+        self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["LOGOUT"]).encode("utf-8"))
         self.controller.show_frame(promptForIP)
         
 class displayChatRoom(tk.Frame):

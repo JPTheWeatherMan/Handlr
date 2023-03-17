@@ -19,9 +19,6 @@ Client->Server
         0x14
         Must be logged in first
         Server will disconnect after sending this message
-    Request users in current chat room
-        0x18
-        Must be logged in and have joined a chat room first
     Leave current chat room
         0x1B
         Must be logged in and have joined a chat room first

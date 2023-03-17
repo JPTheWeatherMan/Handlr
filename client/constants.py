@@ -28,3 +28,13 @@ CLIENT_TO_SERVER = {
     "LEAVE_CHAT_ROOM": "0x1B",
     "SEND_MESSAGE_TO_ROOM": "0x12",
 }
+
+#Pre-defined chats
+chat_rooms = ["csc460", "csit", "general", "roomKim", "roomHale"]
+chat_rooms_to_room_number = {
+    "csc460" : 1,
+    "csit" : 2,
+    "general" : 3,
+    "roomKim" : 4,
+    "roomHale" : 5,
+}
