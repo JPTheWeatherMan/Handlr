@@ -1,8 +1,5 @@
 from ui import HandlrClientUI
-#from serverLink import ServerLink
 from threading import *
-
-
 
 def main():
     ui = HandlrClientUI()

@@ -1,6 +1,8 @@
- We will create a client/server chat program:
-Protocol (as of 2/9):
-Server will listen on port 4269 (TCP)
+Note: all commends in hex (0x00) are going to be 1 byte
+
+each index of a hex number requires 4 bits to represent 0-15
+
+
 Client->Server
 
     Login request (id, password)
@@ -17,19 +19,13 @@ Client->Server
         0x14
         Must be logged in first
         Server will disconnect after sending this message
-    Change nickname
-        0x16 nickname_len(1 byte) nickname
-        Nickname must be less than 25 characters
-        Nickname should be unique within a chat room
-    Request list of chat rooms
-        0x17
-        Must be logged in first
     Request users in current chat room
         0x18
         Must be logged in and have joined a chat room first
     Leave current chat room
         0x1B
         Must be logged in and have joined a chat room first
+
 
 Server->Client
 
@@ -53,16 +49,7 @@ Server->Client
         0xC4
     Valid login
         0x82
-    Invalid nickname/Nickname too long/Unacceptable nickname (don’t try this again)
-        0xC5
-    Nickname taken (ok to try again later)
-        0xC6
-    List of public chat rooms
-        0x84 number_rooms(4 bytes) [per room: room_number(4 bytes) room_name_len(2 bytes) room_name]
-    users in chat room ___
-        0x85 number_users(2 bytes) [per user: nickname_len(1 byte) nickname]
-    Send chat room message to client
-        0x86 message_len(4 bytes, length in bytes), message(UTF-8) nickname_len(1 byte) nickname
+
 
 Other notes:
 

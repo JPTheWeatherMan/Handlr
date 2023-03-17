@@ -5,14 +5,26 @@ SERVER_REQUESTS stores the flags required to request data from the server.
     Properties: The operation name in english
     Values:     The flag identifier expressed as a hex string
 """
-SERVER_REQUESTS = {
+#instead of having to remember the right hand side, make it more rememberable and developer-friendly
+SERVER_TO_CLIENT = {    
+    "I_JOINED_ROOM": "0x80",
+    "USER_JOINED_ROOM": "0x81",
+    "USER_LEFT_ROOM": "0x83",
+    "VALID_LOGIN": "0x82",
+    "ILLEGAL_ROOM_NUMBER": "0xC7",
+    "ILLEGAL_OPERATION_NOT_LOGGED_IN": "0xC1",
+    "INVALID_USERNAME_OR_PASSWORD": "0xC2",
+    "USERS_IN_ROOM": "0x85",
+    "SEND_MESSAGE_TO_CLIENT": "0x86",
+    "ROOM_FULL": "0xC0",
+    "ALREADY_LOGGED_IN": "0xC4",
+}
+
+CLIENT_TO_SERVER = {
     "LOGIN": "0x10",
     "LOGOUT": "0x14",
     "GET_CHAT_ROOMS": "0x17",
     "JOIN_CHAT_ROOM": "0x11",
     "LEAVE_CHAT_ROOM": "0x1B",
-    "GET_USERS_IN_ROOM": "0x18",
     "SEND_MESSAGE_TO_ROOM": "0x12",
-    "CHANGE_NICKNAME": "0x16",
 }
-

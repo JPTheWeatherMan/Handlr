@@ -4,9 +4,7 @@ from state import CLIENT_APPLICATION_STATE
 from tkinter import messagebox
 import tkinter as tk
 import constants
-#import sys
-# sys.path.append("..")
-# from shared import config
+import struct
 
 
 class HandlrClientUI(tk.Tk):
@@ -48,8 +46,19 @@ class HandlrClientUI(tk.Tk):
 
     def listenForMessages(self):
         while True:
-            serverMessage = self.serverSocket.recv(1024).decode("utf-8")
-            print(serverMessage)
+            serverMessage = self.serverSocket.recv(4).decode("utf-8")
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["VALID_LOGIN"]):
+                self.show_frame(roomBrowser)
+                pass
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["INVALID_USERNAME_OR_PASSWORD"]):
+                messagebox.showinfo("Invalid Login Warning", "You have entered wrong credentials")
+                self.show_frame(promptForCredentials)
+                pass
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["ALREADY_LOGGED_IN"]):
+                messagebox.showinfo("Invalid Login Warning", "Your account is currently in use")
+                self.show_frame(promptForCredentials)
+                pass    
+            
 
 class promptForIP(tk.Frame):
     def __init__(self, parent, controller):
@@ -79,7 +88,6 @@ class promptForIP(tk.Frame):
         print("ServerIP: {}".format(serverIp))
         try:
             socket.inet_aton(serverIp)
-            #TODO: move socket connection to use threaded connection and work off of pipeline
             self.parentClass.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.parentClass.serverSocket.connect((str(serverIp), int(4269)))
 
@@ -95,6 +103,8 @@ class promptForIP(tk.Frame):
 class promptForCredentials(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
         inputContainer = tk.Frame(self)
         inputContainer.pack(pady="20")
 
@@ -116,17 +126,39 @@ class promptForCredentials(tk.Frame):
         loginSubmitButton = tk.Button(self, text="Login", command=lambda: self.handleSubmit(
             self.usernameInput.get(), self.passwordInput.get()))
         loginSubmitButton.pack()
-
+    #Function to handle log in from client threads
     def handleSubmit(self, username, password):
         # if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
-        print("Username: {} \nPassword: {}".format(username, password))
         try:
+            encodedUsername = str(username).encode("utf-8")
+            usernameLength = len(encodedUsername)
+            encodedPassword = str(password).encode("utf-8")
+            passwordLength = len(encodedPassword)
+            print("Username Length:{}\nPassword Length:{}".format(usernameLength, passwordLength))
+            print("Username: {} \nPassword: {}".format(username, password))
+            print("encoded username:{}\nEncoded password:{}".format(encodedUsername, encodedPassword))
+
+            #Send Login flag to server
+            self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["LOGIN"]).encode("utf-8"))
+
+            #Pack the username bytes into big endian format
+            packedULength = struct.pack(">H", usernameLength)
+            packedPLength = struct.pack(">H", passwordLength)
+            packedUsr = struct.pack(">{}s".format(usernameLength), encodedUsername)
+            packedPass = struct.pack(">{}s".format(passwordLength), encodedPassword)
+            
+            #Send length of parameters and parameters
+            self.parentClass.serverSocket.sendall(packedULength)
+            self.parentClass.serverSocket.sendall(packedUsr)
+            self.parentClass.serverSocket.sendall(packedPLength)
+            self.parentClass.serverSocket.sendall(packedPass)
+            
+            #Clear UI input  
             self.usernameInput.delete(0, tk.END)
             self.passwordInput.delete(0, tk.END)
-            self.controller.show_frame(roomBrowser)
         except socket.error:
-            messagebox.showinfo("IP Entry", "Please enter a valid IP address")
-            self.serverIPInput.delete(0, tk.END)
+            self.usernameInput.delete(0, tk.END)
+            self.passwordInput.delete(0, tk.END)
         
 class roomBrowser(tk.Frame):
     def __init__(self, parent, controller):
