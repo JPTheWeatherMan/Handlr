@@ -94,7 +94,6 @@ class promptForIP(tk.Frame):
         loginSubmitButton.pack()
         
     def handleSubmit(self, serverIp):
-        # if (config.DEBUG_MODE): print("ServerIP: {} \nUsername: {} \nPassword: {}".format(serverIp, username, password))
         print("ServerIP: {}".format(serverIp))
         try:
             socket.inet_aton(serverIp)
