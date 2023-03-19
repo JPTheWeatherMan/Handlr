@@ -146,23 +146,21 @@ class HandlrClientUI(tk.Tk):
             #There is a message to interpret and display on the UI
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]):
                 print("Received new message")
-                # newMessageLengthBytes = self.serverSocket.recv(4)
-                # newMessageLength = int(struct.unpack(">I", newMessageLengthBytes)[0])
-                # print("of length {}". format(newMessageLength))
-                # newMessage = self.getStringFromSocketUsingLength(newMessageLength)
-                # print("and content of: {}".format(newMessage))
+                newMessageLengthBytes = self.serverSocket.recv(4)
+                newMessageLength = int(struct.unpack(">I", newMessageLengthBytes)[0])
+                print("of length {}". format(newMessageLength))
+                newMessage = self.getStringFromSocketUsingLength(newMessageLength)
+                print("and content of: {}".format(newMessage))
 
-                # self.frames[displayChatRoom].messageBox.insert(tk.END,"Other user: {}\n".format(newMessage))
+                self.frames[displayChatRoom].messageBox.insert(tk.END,"Other user: {}\n".format(newMessage))
 
 
                 senderNameBytes = self.serverSocket.recv(2)
                 senderNameLength = int(struct.unpack(">H", senderNameBytes)[0])
                 print("with u name length of {}".format(senderNameLength))
                 senderName = self.getStringFromSocketUsingLength(senderNameLength)
-                message = "from: {}".format(senderName)
-                self.frames[displayChatRoom].messageBox.insert(tk.END,"{}\n".format(message))
-                # print("{}: {}".format(senderName, newMessage))
-                # self.frames[displayChatRoom].messageBox.insert(tk.END,"{}: {}\n".format(senderName, newMessage))
+                print("{}: {}".format(senderName, newMessage))
+                self.frames[displayChatRoom].messageBox.insert(tk.END,"{}: {}\n".format(senderName, newMessage))
 
             #The room we are trying to join is full
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["ROOM_FULL"]):

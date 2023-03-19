@@ -276,6 +276,10 @@ def clientThread(clientSocket, clientAddress):
             if THREAD_ROOM == "":
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["NOT_JOINED_ROOM"]).encode("utf-8"))
 
+            #If there is no username then the client has not logged in yet
+            if THREAD_USERNAME == "":
+                clientSocket.sendall(str(constants.SERVER_TO_CLIENT["ILLEGAL_OPERATION_NOT_LOGGED_IN"]).encode("utf-8"))
+
             print("User {} has left the room {}".format(THREAD_USERNAME,THREAD_ROOM))
 
             #remove the client from the room
@@ -329,10 +333,9 @@ def clientThread(clientSocket, clientAddress):
             # oneBigByteArray = str(constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]).encode("utf-8") + packedMessageLength + packedMessage + packedMessage + packedNameLength + packedName
             
             print (" the message says: {}".format(packedMessage))
-
+            
             #For all clients connected
             for socket in connectedClients:
-                
                 #For all clients in the chat 
                 for address in chat_rooms[THREAD_ROOM]["connected_client_addresses"]:
                     #Except for the one who sent the message , send message packet 
@@ -340,8 +343,8 @@ def clientThread(clientSocket, clientAddress):
                         print("With connected clients: \t {}\n".format(chat_rooms[THREAD_ROOM]["connected_client_addresses"]))
                         print("Sending message: \t{}\n to: \t{}\n from: \t{}\n".format(message, THREAD_ROOM,THREAD_USERNAME))
                         socket.sendall(str(constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]).encode("utf-8"))
-                        # socket.sendall(packedMessageLength)
-                        # socket.sendall(packedMessage)
+                        socket.sendall(packedMessageLength)
+                        socket.sendall(packedMessage)
                         socket.sendall(packedNameLength)
                         socket.sendall(packedName)
                         # print ("Packed name: {}".format(packedName))
