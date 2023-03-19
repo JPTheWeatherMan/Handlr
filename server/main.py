@@ -301,6 +301,8 @@ def clientThread(clientSocket, clientAddress):
                         socket.sendall(str(constants.SERVER_TO_CLIENT["USER_LEFT_ROOM"]).encode("utf-8"))
                         socket.sendall(packedUserLength)
                         socket.sendall(packedUser)
+
+            #Empty out local thread room state because user has left their room
             THREAD_ROOM = ""
 
 
@@ -329,11 +331,9 @@ def clientThread(clientSocket, clientAddress):
             encodeMessageLength = len(encodedMessage)
             packedMessageLength = struct.pack(">I", encodeMessageLength)
             packedMessage = struct.pack(">{}s".format(encodeMessageLength), encodedMessage)
-
-            # oneBigByteArray = str(constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]).encode("utf-8") + packedMessageLength + packedMessage + packedMessage + packedNameLength + packedName
             
             print (" the message says: {}".format(packedMessage))
-            
+
             #For all clients connected
             for socket in connectedClients:
                 #For all clients in the chat 
