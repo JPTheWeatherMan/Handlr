@@ -40,7 +40,7 @@ class HandlrClientUI(tk.Tk):
         string = ""
         for i in range(length):
             newChar = self.serverSocket.recv(1)
-            string += struct.unpack(">s", newChar)[0].decode("utf-8")
+            string += struct.unpack(">c", newChar)[0].decode("utf-8")
         return string
 
     def show_frame(self, cont):
@@ -49,25 +49,68 @@ class HandlrClientUI(tk.Tk):
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            exit()
+            exit(0)
 
     def listenForMessages(self):
         while True:
-            serverMessage = self.serverSocket.recv(4).decode("utf-8")
+            try:
+                serverMessage = self.serverSocket.recv(4).decode("utf-8")
+            except socket.error as e:
+                print("Had socket error: \t{}".format(e))
+                messagebox.showinfo("Connection Error", "Socket experienced error")
+
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["VALID_LOGIN"]):
                 self.show_frame(roomBrowser)
+
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["INVALID_USERNAME_OR_PASSWORD"]):
                 messagebox.showinfo("Invalid Login Warning", "You have entered wrong credentials")
                 self.show_frame(promptForCredentials)
+
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["ALREADY_LOGGED_IN"]):
                 messagebox.showinfo("Invalid Login Warning", "Your account is currently in use")
                 self.show_frame(promptForCredentials)
+
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["I_JOINED_ROOM"]):
                 welcomeMessageBytes = self.serverSocket.recv(2)
                 welcomeMessageLength = int(struct.unpack(">H", welcomeMessageBytes)[0])
                 welcomeMessage = self.getStringFromSocketUsingLength(welcomeMessageLength)
-                print(welcomeMessage)
                 self.show_frame(displayChatRoom)
+                self.frames[displayChatRoom].messageBox.delete("1.0", tk.END)
+                self.frames[displayChatRoom].messageBox.insert(tk.END,"Server: {}\n".format(welcomeMessage))
+
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["USER_JOINED_ROOM"]):
+                newlyJoinedUserBytes = self.serverSocket.recv(2)
+                newlyJoinedUserLength = int(struct.unpack(">H", newlyJoinedUserBytes)[0])
+                newlyJoinedUser = self.getStringFromSocketUsingLength(newlyJoinedUserLength)
+                message = "{} has joined the chat\n".format(newlyJoinedUser)
+                self.frames[displayChatRoom].messageBox.insert(tk.END, message)
+
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["USER_LEFT_ROOM"]):
+                leavingUserBytes = self.serverSocket.recv(2)
+                leavingUserLength = int(struct.unpack(">H", leavingUserBytes)[0])
+                leavingUser = self.getStringFromSocketUsingLength(leavingUserLength)
+                message = "{} has left the chat\n".format(leavingUser)
+                self.frames[displayChatRoom].messageBox.insert(tk.END, message)
+
+
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]):
+                print("Received new message")
+                newMessageLengthBytes = self.serverSocket.recv(4)
+                newMessageLength = int(struct.unpack(">I", newMessageLengthBytes)[0])
+                print("of length {}". format(newMessageLength))
+                newMessage = self.getStringFromSocketUsingLength(newMessageLength)
+                print("and content of: {}".format(newMessage))
+
+                senderNameBytes = self.serverSocket.recv(2)
+                senderNameLength = int(struct.unpack(">H", senderNameBytes)[0])
+                print("with u name length of {}".format(senderNameLength))
+                senderName = self.getStringFromSocketUsingLength(senderNameLength)
+                print("{}: {}".format(senderName, newMessage))
+                self.frames[displayChatRoom].messageBox.insert(tk.END,"{}: {}\n".format(senderName, newMessage))
+
+            if (str(serverMessage) == constants.SERVER_TO_CLIENT["ROOM_FULL"]):
+                messagebox.showinfo("Cannot join chat room", "The room you are attempting to join is full")
+                self.show_frame(roomBrowser)    
             
 
 class promptForIP(tk.Frame):
@@ -141,9 +184,7 @@ class promptForCredentials(tk.Frame):
         usernameLength = len(encodedUsername)
         encodedPassword = str(password).encode("utf-8")
         passwordLength = len(encodedPassword)
-        print("Username Length:{}\nPassword Length:{}".format(usernameLength, passwordLength))
         print("Username: {} \nPassword: {}".format(username, password))
-        print("encoded username:{}\nEncoded password:{}".format(encodedUsername, encodedPassword))
 
         #Send Login flag to server
         self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["LOGIN"]).encode("utf-8"))
@@ -216,28 +257,37 @@ class displayChatRoom(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
-        roomBrowserLogoutButton = tk.Button(self, text="Logout", command=lambda: self.handleLeave())
-        roomBrowserLogoutButton.pack()
 
-    def onConnect():
-        # TODO: Get Users in chatroom
-        # TODO: Prompt for nickname -- assert uniqueness at room scope
-        # TODO: announce to server I have connected
-        pass
+        self.messageBox = tk.Text(self, width=50)
+        self.messageBox.grid(row=0, column=0, padx=10, pady=10)
+
+        self.messageEntry = tk.Entry(self, width=50)
+        self.messageEntry.grid(row=1, column=0, padx=10, pady=10)
+
+        self.roomBrowserLogoutButton = tk.Button(self, text="Leave", command=lambda: self.handleLeave())
+        self.roomBrowserLogoutButton.grid(row = 2, column=1, padx=10, pady=10)
+
+        self.sendMessageButton = tk.Button(self, text="Send Message", command=lambda: self.handleSendMessage(self.messageEntry.get()))
+        self.sendMessageButton.grid(row = 2, column=0, padx=10, pady=10)
 
     def handleLeave(self):
-        CLIENT_APPLICATION_STATE["CURRENT_ROOM"] = None
-        CLIENT_APPLICATION_STATE["NICKNAME_IN_ROOM"] = None
+        self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["LEAVE_CHAT_ROOM"]).encode("utf-8"))
         self.controller.show_frame(roomBrowser)
 
-    def handleSendMessage(message):
-        pass
-
-    def handleReceivedNewMessage(message):
-        pass
-
-    def userHasJoined():
-        pass
-
-    def userHasLeft():
-        pass
+    def handleSendMessage(self, message):
+        if len(message) == 0:
+            self.messageEntry.delete(0, tk.END)
+            return
+        
+        encodedMessage = str(message).encode("utf-8")
+        encodedMessageLength = len(encodedMessage)
+        packedMessageLength = struct.pack(">I", encodedMessageLength)
+        packedMessage = struct.pack(">{}s".format(encodedMessageLength), encodedMessage)
+        self.messageBox.insert(tk.END,"You: {}\n".format(message))
+        self.messageEntry.delete(0, tk.END)
+        print(encodedMessageLength)
+        print(packedMessageLength)
+        self.messageEntry.delete(0, tk.END)
+        self.parentClass.serverSocket.sendall(str(constants.CLIENT_TO_SERVER["SEND_MESSAGE_TO_ROOM"]).encode("utf-8"))
+        self.parentClass.serverSocket.sendall(packedMessageLength)
+        self.parentClass.serverSocket.sendall(packedMessage)
