@@ -145,15 +145,16 @@ class HandlrClientUI(tk.Tk):
 
             #There is a message to interpret and display on the UI
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]):
+                #NOTE: SIMPLE MESSAGE TRANSFER
+                # message = self.serverSocket.recv(1024).decode("utf-8")
+                # self.frames[displayChatRoom].messageBox.insert(tk.END,"Another Sender: {}\n".format(message))
+
                 print("Received new message")
                 newMessageLengthBytes = self.serverSocket.recv(4)
                 newMessageLength = int(struct.unpack(">I", newMessageLengthBytes)[0])
                 print("of length {}". format(newMessageLength))
                 newMessage = self.getStringFromSocketUsingLength(newMessageLength)
                 print("and content of: {}".format(newMessage))
-
-                self.frames[displayChatRoom].messageBox.insert(tk.END,"Other user: {}\n".format(newMessage))
-
 
                 senderNameBytes = self.serverSocket.recv(2)
                 senderNameLength = int(struct.unpack(">H", senderNameBytes)[0])

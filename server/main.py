@@ -331,8 +331,6 @@ def clientThread(clientSocket, clientAddress):
             encodeMessageLength = len(encodedMessage)
             packedMessageLength = struct.pack(">I", encodeMessageLength)
             packedMessage = struct.pack(">{}s".format(encodeMessageLength), encodedMessage)
-            
-            print (" the message says: {}".format(packedMessage))
 
             #For all clients connected
             for socket in connectedClients:
@@ -342,13 +340,15 @@ def clientThread(clientSocket, clientAddress):
                     if (socket is not clientSocket) and (address is not clientAddress):
                         print("With connected clients: \t {}\n".format(chat_rooms[THREAD_ROOM]["connected_client_addresses"]))
                         print("Sending message: \t{}\n to: \t{}\n from: \t{}\n".format(message, THREAD_ROOM,THREAD_USERNAME))
-                        socket.sendall(str(constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]).encode("utf-8"))
+
+                        #NOTE: Simple message transfer
+                        # socket.sendall(str(constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]).encode("utf-8"))
+                        # socket.sendall(message.encode("utf-8"))
+                        
                         socket.sendall(packedMessageLength)
                         socket.sendall(packedMessage)
                         socket.sendall(packedNameLength)
                         socket.sendall(packedName)
-                        # print ("Packed name: {}".format(packedName))
-                        # socket.sendall(oneBigByteArray)
 
         # If no data is read from the socket then we assume the connection has been lost, remove 
         # them from the room and log them out, while closing the connection
