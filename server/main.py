@@ -151,36 +151,6 @@ def getRoomNameForRoomId(room_number):
         if(chat_rooms.get(room).get("room_number") == room_number):
             return room
         
-def roomContainsClient(room_name, client_address):
-    connectedAddresses = chat_rooms.get(room_name).get("connected_client_addresses")
-    for address in connectedAddresses:
-        if(address == client_address):
-            return True
-    return False
-
-def getOtherClientAddressesInRoom(own_client_address, room_name):
-    clients = chat_rooms[room_name]["connected_client_addresses"]
-    clients_excluding_self = []
-    for i in range(0, len(clients), 1):
-        if(clients[i][1] != own_client_address[1]):
-            clients_excluding_self.append(clients[i])
-    return clients_excluding_self
-
-def getSocketsWithAddresses(address_to_exclude):
-    included_sockets = []
-    for socket in connectedClients:
-        if socket[1] != connectedClients[1]:
-            included_sockets.append(socket[1])
-    return included_sockets
-
-
-def broadcastToOtherClientsInRoom(room_name, own_client_address, flag, message):
-    otherClients = getOtherClientAddressesInRoom(own_client_address, room_name)
-    otherSockets = getSocketsWithAddresses(otherClients)
-    for socket in otherSockets:
-        socket.send
-
-
 
 def clientThread(clientSocket, clientAddress):
     CONNECTED = True
@@ -326,7 +296,6 @@ def clientThread(clientSocket, clientAddress):
    
 
 while True:
-    OFFSET = 0
     try:
         clientSocket, clientAddress = server.accept()
         connectedClients.add(clientSocket)
