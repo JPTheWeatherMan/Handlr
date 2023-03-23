@@ -1,5 +1,5 @@
 from socket import *
-from threading import *
+import threading
 import constants
 import struct
 
@@ -17,11 +17,13 @@ server.bind((host, port))
 print("Listening for connections on {}:{}".format(host,port))
 server.listen()
 
-
+#hold sockets for connected clients
 connectedClients = set()
+#hold connected client thread to keep track of locking/unlocking 
+clientThreads = set()
 
 #For testing
-MAX_USERS_PER_ROOM = 3
+MAX_USERS_PER_ROOM = 10
 
 
 #Pre-defined chats
@@ -155,14 +157,31 @@ def getRoomNameForRoomId(room_number):
         if(chat_rooms.get(room).get("room_number") == room_number):
             return room
         
+
+def lockThreadsExcluding():
+    threadList = threading.enumerate()
+    for i in threadList :
+        if (i != threading.current_thread() and i != threading.main_thread()):
+            i.acquire()
+
+def unlockThreadsExcluding():
+    #threading.Condition.notify_all()
+    threadList = threading.enumerate()
+    for i in threadList :
+        if (i == threading.main_thread()):
+            pass
+        elif(i != threading.current_thread()):
+            i.release()
+    
+        
 # function which handles all of the received data from clients
 # param: clientSocket - representation of the connected client's TCP socket
 # param: clientAddress - the string representation of a client's address
 def clientThread(clientSocket, clientAddress):
     #Local thread state
     CONNECTED = True
-    THREAD_USERNAME = ""
-    THREAD_ROOM = ""
+    CLIENT_USERNAME = ""
+    CLIENT_CHAT_ROOM = ""
 
     while CONNECTED:
         try:
@@ -175,6 +194,7 @@ def clientThread(clientSocket, clientAddress):
 
         # This is a request for log in from client to server 
         if (str(command) == constants.CLIENT_TO_SERVER["LOGIN"]):
+            lockThreadsExcluding()
             print("Handling Login")
 
             #This is for reading an id 
@@ -195,31 +215,38 @@ def clientThread(clientSocket, clientAddress):
                 print("User {} has been validated".format(userName))
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["VALID_LOGIN"]).encode("utf-8"))
                 #Assign TREAD_USERNAME upon validated
-                THREAD_USERNAME = userName
+                CLIENT_USERNAME = userName
                 print("Did pass validation")
+                unlockThreadsExcluding()
 
             #This will send a invalid log in message to those who enter wrong password
             if(validatedUser == False and users[userName]["is_logged_in"] == False):
                 print("User {} has FAILED validation".format(userName))
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["INVALID_USERNAME_OR_PASSWORD"]).encode("utf-8"))
+                unlockThreadsExcluding()
 
             #This will send a invalid log in to those who are already logged in 
             if(validatedUser == False and users[userName]["is_logged_in"] == True):
                 print("User {} has PASSED validation but is already logged in".format(userName))
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["ALREADY_LOGGED_IN"]).encode("utf-8"))
+                unlockThreadsExcluding()
         
         #This is a request for log out  from client to server
         if (str(command) == constants.CLIENT_TO_SERVER["LOGOUT"]):
-            print("Received logout from {}".format(THREAD_USERNAME))
+            lockThreadsExcluding()
+            print("Received logout from {}".format(CLIENT_USERNAME))
             CONNECTED = False
-            logoutUser(THREAD_USERNAME)
+            clientThreads.remove(CLIENT_USERNAME)
+            logoutUser(CLIENT_USERNAME)
 
         #This is a request for joining a chat room 
         if(str(command) == constants.CLIENT_TO_SERVER["JOIN_CHAT_ROOM"]):
+            lockThreadsExcluding()
 
             #If there is no username then the client has not logged in yet
-            if THREAD_USERNAME == "":
+            if CLIENT_USERNAME == "":
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["ILLEGAL_OPERATION_NOT_LOGGED_IN"]).encode("utf-8"))
+                unlockThreadsExcluding()
 
             #Get the room to join
             room_number_bytes = clientSocket.recv(4)
@@ -227,12 +254,12 @@ def clientThread(clientSocket, clientAddress):
             
             #get the room name from the room number given to us from the client
             room_name = getRoomNameForRoomId(room_number)
-            print("Received request to join room {} from {}".format(room_number, THREAD_USERNAME))
+            print("Received request to join room {} from {}".format(room_number, CLIENT_USERNAME))
             
             #Ensure the chat room is not at capacity
             if(chat_rooms[room_name].get("currentUserCount") < chat_rooms[room_name].get("capacity")):
-                pushUser(THREAD_USERNAME, room_name, clientAddress)
-                THREAD_ROOM = room_name
+                pushUser(CLIENT_USERNAME, room_name, clientAddress)
+                CLIENT_CHAT_ROOM = room_name
 
                 #Grab the welcome message for the chat
                 encodedWelcomeMessage = str(chat_rooms[room_name]["welcomeMessage"]).encode("utf-8")
@@ -248,80 +275,87 @@ def clientThread(clientSocket, clientAddress):
                 clientSocket.sendall(packedWelcomeMessage)
 
                 #Build sending notification to other clients
-                encodedUserName = str(THREAD_USERNAME).encode("utf-8")
+                encodedUserName = str(CLIENT_USERNAME).encode("utf-8")
                 usernameLength = len(encodedUserName)
                 packedUserLength = struct.pack(">H", usernameLength)
                 packedUser = struct.pack(">{}s".format(usernameLength), encodedUserName)
-                print("{} has successfully joined {}".format(THREAD_USERNAME, THREAD_ROOM))
+                print("{} has successfully joined {}".format(CLIENT_USERNAME, CLIENT_CHAT_ROOM))
                 #send message to all clients in the chat when one joins the chat 
                 for socket in connectedClients:
-                    for address in chat_rooms[THREAD_ROOM]["connected_client_addresses"]:
+                    for address in chat_rooms[CLIENT_CHAT_ROOM]["connected_client_addresses"]:
                         #Except for the one who joins 
                         if (socket is not clientSocket) and (address is not clientAddress):
-                            print("Notifying socket: \t{}\n with address:\t{}\n that user: \t{}\nhas joined".format(socket, address, THREAD_USERNAME))
+                            print("Notifying socket: \t{}\n with address:\t{}\n that user: \t{}\nhas joined".format(socket, address, CLIENT_USERNAME))
                             socket.sendall(str(constants.SERVER_TO_CLIENT["USER_JOINED_ROOM"]).encode("utf-8"))
                             socket.sendall(packedUserLength)
                             socket.sendall(packedUser)
+                            unlockThreadsExcluding()
                 
             #if the room is full send the CHAT_ROOM_FULL flag to the client
             else:           
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["ROOM_FULL"]).encode("utf-8"))
+                unlockThreadsExcluding()
 
 
         #Remove Client from currentUsers, and decrement the currentUserCount
         # NOTE: the room is preserved by the clientThread and thus does not need to be sent from client
         if (str(command) == constants.CLIENT_TO_SERVER["LEAVE_CHAT_ROOM"]):
+            lockThreadsExcluding()
 
             #If the client has not joined a room, send the error flag corresponding to not joined room
-            if THREAD_ROOM == "":
+            if CLIENT_CHAT_ROOM == "":
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["NOT_JOINED_ROOM"]).encode("utf-8"))
+                unlockThreadsExcluding()
 
             #If there is no username then the client has not logged in yet
-            if THREAD_USERNAME == "":
+            if CLIENT_USERNAME == "":
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["ILLEGAL_OPERATION_NOT_LOGGED_IN"]).encode("utf-8"))
+                unlockThreadsExcluding()
 
-            print("User {} has left the room {}".format(THREAD_USERNAME,THREAD_ROOM))
+            print("User {} has left the room {}".format(CLIENT_USERNAME,CLIENT_CHAT_ROOM))
 
             #remove the client from the room
-            leaveRoom(THREAD_ROOM, THREAD_USERNAME, clientAddress)
+            leaveRoom(CLIENT_CHAT_ROOM, CLIENT_USERNAME, clientAddress)
 
             #encode the user who has left the chat
-            encodedUserName = str(THREAD_USERNAME).encode("utf-8")
+            encodedUserName = str(CLIENT_USERNAME).encode("utf-8")
             usernameLength = len(encodedUserName)
             packedUserLength = struct.pack(">H", usernameLength)
             packedUser = struct.pack(">{}s".format(usernameLength), encodedUserName)
-            print(chat_rooms[THREAD_ROOM]["connected_client_addresses"])
+            print(chat_rooms[CLIENT_CHAT_ROOM]["connected_client_addresses"])
 
             #Handle propagating message to clients in same room
             for socket in connectedClients:
-                for address in chat_rooms[THREAD_ROOM]["connected_client_addresses"]:
+                for address in chat_rooms[CLIENT_CHAT_ROOM]["connected_client_addresses"]:
                     #Except for the one who left
                     if (socket is not clientSocket) and (address is not clientAddress):
-                        print("Notifying socket: \t{}\n with address:\t{}\n that user: \t{}\nhas left".format(socket, address, THREAD_USERNAME))
+                        print("Notifying socket: \t{}\n with address:\t{}\n that user: \t{}\nhas left".format(socket, address, CLIENT_USERNAME))
                         socket.sendall(str(constants.SERVER_TO_CLIENT["USER_LEFT_ROOM"]).encode("utf-8"))
                         socket.sendall(packedUserLength)
                         socket.sendall(packedUser)
 
             #Empty out local thread room state because user has left their room
-            THREAD_ROOM = ""
+            CLIENT_CHAT_ROOM = ""
+            unlockThreadsExcluding()
 
 
             
         #This handles sending messages to all clients in the same chat                             
         if(str(command) == constants.CLIENT_TO_SERVER["SEND_MESSAGE_TO_ROOM"]):
+            lockThreadsExcluding()
 
             #If the client has not joined a room, send the error flag corresponding to not joined room
-            if THREAD_ROOM == "":
+            if CLIENT_CHAT_ROOM == "":
                 clientSocket.sendall(str(constants.SERVER_TO_CLIENT["NOT_JOINED_ROOM"]).encode("utf-8"))
 
-            print("Received a message from {} to be sent to room {}".format(THREAD_USERNAME, THREAD_ROOM))
+            print("Received a message from {} to be sent to room {}".format(CLIENT_USERNAME, CLIENT_CHAT_ROOM))
             messageLengthBytes = clientSocket.recv(4)
             messageLength = int(struct.unpack(">I", messageLengthBytes)[0])
             message = getStringFromSocketUsingLength(messageLength)
             print("got message length: {}".format(messageLength))
             print("got message {}: ".format(message))  
 
-            encodedName = str(THREAD_USERNAME).encode("utf-8")
+            encodedName = str(CLIENT_USERNAME).encode("utf-8")
             encodedNameLength = len(encodedName)
             packedNameLength = struct.pack(">H", encodedNameLength)
             packedName = struct.pack(">{}s".format(encodedNameLength), encodedName)            
@@ -335,11 +369,11 @@ def clientThread(clientSocket, clientAddress):
             #For all clients connected
             for socket in connectedClients:
                 #For all clients in the chat 
-                for address in chat_rooms[THREAD_ROOM]["connected_client_addresses"]:
+                for address in chat_rooms[CLIENT_CHAT_ROOM]["connected_client_addresses"]:
                     #Except for the one who sent the message , send message packet 
                     if (socket is not clientSocket) and (address is not clientAddress):
-                        print("With connected clients: \t {}\n".format(chat_rooms[THREAD_ROOM]["connected_client_addresses"]))
-                        print("Sending message: \t{}\n to: \t{}\n from: \t{}\n".format(message, THREAD_ROOM,THREAD_USERNAME))
+                        print("With connected clients: \t {}\n".format(chat_rooms[CLIENT_CHAT_ROOM]["connected_client_addresses"]))
+                        print("Sending message: \t{}\n to: \t{}\n from: \t{}\n".format(message, CLIENT_CHAT_ROOM,CLIENT_USERNAME))
 
                         #NOTE: Simple message transfer
                         # socket.sendall(str(constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]).encode("utf-8"))
@@ -349,13 +383,14 @@ def clientThread(clientSocket, clientAddress):
                         socket.sendall(packedMessage)
                         socket.sendall(packedNameLength)
                         socket.sendall(packedName)
+            unlockThreadsExcluding()
 
         # If no data is read from the socket then we assume the connection has been lost, remove 
         # them from the room and log them out, while closing the connection
         if not command:
             print("{} stopped sending data".format(clientAddress))
-            logoutUser(THREAD_USERNAME)
-            leaveRoom(THREAD_ROOM, THREAD_USERNAME, clientAddress)
+            logoutUser(CLIENT_USERNAME)
+            leaveRoom(CLIENT_CHAT_ROOM, CLIENT_USERNAME, clientAddress)
             clientSocket.close()
             clientSocket.shutdown()
             connectedClients.remove(clientSocket)
@@ -372,11 +407,8 @@ while True:
         print("Connection established with {}".format(clientAddress))
 
         #kick off client listener thread
-        thread = Thread(target=clientThread, args=(clientSocket, clientAddress))
-
+        thread = threading.Thread(target=clientThread, args=(clientSocket, clientAddress))
         thread.start()
+
     except KeyboardInterrupt:
         exit(0)
-                                  
-
-
