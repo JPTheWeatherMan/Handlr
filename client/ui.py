@@ -50,7 +50,9 @@ class HandlrClientUI(tk.Tk):
         string = ""
         for i in range(length):
             newChar = self.serverSocket.recv(1)
-            string += struct.unpack(">c", newChar)[0].decode("utf-8")
+            string += struct.unpack(">s", newChar)[0].decode("utf-8")
+            print("received character: {}".format(newChar))
+            print("to create string so far: {}".format(string))
         return string
 
     # Raises a frame to the top the UI
@@ -145,10 +147,6 @@ class HandlrClientUI(tk.Tk):
 
             #There is a message to interpret and display on the UI
             if (str(serverMessage) == constants.SERVER_TO_CLIENT["SEND_MESSAGE_TO_CLIENT"]):
-                #NOTE: SIMPLE MESSAGE TRANSFER
-                # message = self.serverSocket.recv(1024).decode("utf-8")
-                # self.frames[displayChatRoom].messageBox.insert(tk.END,"Another Sender: {}\n".format(message))
-
                 print("Received new message")
                 newMessageLengthBytes = self.serverSocket.recv(4)
                 newMessageLength = int(struct.unpack(">I", newMessageLengthBytes)[0])

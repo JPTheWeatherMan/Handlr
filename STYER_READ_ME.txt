@@ -70,15 +70,3 @@ You will find many hacky code excerpts, however, allow us to provide some reason
         Parts of chat messages will be interpreted as commands
         chat will INTERMITTENTLY work for PARTIAL messages
 
-    -- Questions --
-        Is this thread confusion?
-
-        Is this happening because a UI process is trying to read and write at the same time?
-            This is unlikely because the server sends messages to client NON-INCLUSIVELY
-
-        Why does the socket connection not fail?
-
-        Why does it work with one client but fails when another client is added?
-
-        Do we need a separate thread for sending data?
-
